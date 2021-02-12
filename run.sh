@@ -7,27 +7,24 @@ SLAVE_PORT=33061
 DB_USER=root
 DB_PASSWD=password
 
+echo "${@:2}"
+
 case $1 in 
 
-create-replication-user)
-    mysql -h $MASTER_HOST -P $MASTER_PORT -u $DB_USER -p$DB_PASSWD < \
-    create-replication-user.sql
+master)
+    mysql -h $MASTER_HOST -P $MASTER_PORT -u $DB_USER -p$DB_PASSWD < $2
     ;;
 
-initialize-replication)
-    mysql -h $SLAVE_HOST -P $SLAVE_PORT -u $DB_USER -p$DB_PASSWD < \
-    initialize_replication.sql
+slave)
+    mysql -h $SLAVE_HOST -P $SLAVE_PORT -u $DB_USER -p$DB_PASSWD < $2
     ;;
 
-init-database)
-    mysql -h $MASTER_HOST -P $MASTER_PORT -u $DB_USER -p$DB_PASSWD < \
-    init-database.sql
-    ;;
-
-*)
-    ./run.sh create-replication-user &&
-    ./run.sh initialize-replication &&
-    ./run.sh init-database
+init)
+    ./run.sh master create-replication-user.sql &&
+    ./run.sh slave create-replication-user.sql &&
+    ./run.sh master initialize-master-replication.sql &&
+    ./run.sh slave initialize-slave-replication.sql &&
+    ./run.sh master init-database.sql
     ;;
 
 esac
