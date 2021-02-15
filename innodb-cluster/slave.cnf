@@ -1,0 +1,28 @@
+# https://dev.mysql.com/doc/refman/8.0/en/group-replication-configuring-instances.html
+
+[mysqld]
+server-id = 2
+port=3307
+
+# these settings are required
+gtid_mode=ON
+enforce_gtid_consistency=ON
+binlog_checksum=NONE
+log_bin=binlog
+log_slave_updates=ON
+binlog_format=ROW
+master_info_repository=TABLE
+relay_log_info_repository=TABLE
+transaction_write_set_extraction=XXHASH64
+
+# Group Replication specific options
+
+plugin_load_add = 'group_replication.so'
+
+# need "loose-" to ignore unknown group replication system variables
+loose-group_replication_group_name = "8E2F4761-C55C-422F-8684-D086F6A1DB0E"
+loose-group_replication_start_on_boot = off
+# use host network otherwise we got an error when creating cluster by mysqlsh on host
+loose-group_replication_local_address = "localhost:33066"
+loose-group_replication_group_seeds = "localhost:33065,localhost:33066"
+loose-group_replication_bootstrap_group = off

@@ -1,0 +1,41 @@
+version: '3'
+
+# Cannot create innodb cluster with default network when we use mysqlsh on host,
+# therefore workaround it by using host network
+
+services:
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    network_mode: "host"  
+    volumes:
+      - ./master.cnf:/etc/mysql/conf.d/mysql.cnf
+    restart: always
+
+  mysql-slave:
+    image: mysql:8.0
+    container_name: mysql-slave
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    network_mode: "host"
+    volumes:
+      - ./slave.cnf:/etc/mysql/conf.d/mysql.cnf
+    restart: always
+
+  # https://hub.docker.com/r/mysql/mysql-router
+  mysql-router:
+    image: mysql/mysql-router:8.0.23
+    container_name: mysql-router
+    network_mode: "host"
+    environment:
+      # cannot be localhost here, must use 127.0.0.1
+      MYSQL_HOST: "127.0.0.1"
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+    restart: always
+
+
+  
