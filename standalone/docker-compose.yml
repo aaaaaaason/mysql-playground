@@ -1,0 +1,18 @@
+version: '3'
+
+# Cannot create innodb cluster with default network when we use mysqlsh on host,
+# therefore workaround it by using host network
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3306:3306" 
+    restart: always
+
+
+
+  
