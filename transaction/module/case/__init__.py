@@ -10,7 +10,7 @@ from .product_inc import (
 
 def get_cases():
     return [
-        #CheckSleep
+        #CheckSleep,
         #CheckUpdateAtomicity,
         #CheckRepeatableRead,
         #CheckUpdateWithoutSelectForUpdate,

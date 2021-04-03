@@ -33,7 +33,15 @@ class BaseCase:
             self._close(conn)
             input("Press Enter to continue...")
 
+    def _begin(self, conn):
+        conn.begin()
+        self._logger.info('Begin')
+
+    def _commit(self, conn):
+        conn.commit()
+        self._logger.info('Committed')
+        
     def _sleep(self, sec: int):
         for i in range(sec, 0, -1):
             time.sleep(1)
-            self._logger.info(f'Sleep for {i} second...')
+            #self._logger.info(f'Sleep for {i} second...')

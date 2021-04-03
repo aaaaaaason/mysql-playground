@@ -27,12 +27,13 @@ class CheckUpdateAtomicity(BaseCase):
         pd.delete_product(conn, self.id)
 
     def _get_routines(self):
-        return [self._increment_1000, self._increment_1000]
+        return [self._increment_25, self._increment_25]
 
-    def _increment_1000(self):
+    def _increment_25(self):
         with get_connection() as conn:
-            for i in range(1000):
+            for i in range(25):
                 pd.increment_product(conn, self.id)
+                self._logger.info(f'Number {i} increment')
 
 class CheckRepeatableRead(BaseCase):
     id = 2
@@ -48,24 +49,24 @@ class CheckRepeatableRead(BaseCase):
 
     def _select_sleep_select(self):
         with get_connection() as conn:
-            conn.begin()
+            self._begin(conn)
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" at the first select')
             self._sleep(5)
             # get None when commited here
-            conn.commit()
+            #self._commit(conn)
             product = pd.select_product_by_id(conn, self.id)
-            self._logger.info(f'Got product "{product}" after 5 second')
+            self._logger.info(f'Got product "{product}" before commit')
             # still have product due to REPEATABLE READ
-            #conn.commit()
+            self._commit(conn)
+            product = pd.select_product_by_id(conn, self.id)
+            self._logger.info(f'Got product "{product}" after commit')
 
     def _delete_product_after_sleep(self):
         with get_connection() as conn:
-            self._logger.info(f'Start sleep...')
             self._sleep(3)
-            self._logger.info(f'Wake up and delete product')
+            self._logger.info(f'Delete product')
             pd.delete_product(conn, self.id)
-            self._logger.info(f'Product deleted')
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Select Product again and got "{product}"')
 
@@ -83,7 +84,7 @@ class CheckUpdateWithoutSelectForUpdate(BaseCase):
 
     def _select_sleep_update(self):
         with get_connection() as conn:
-            conn.begin()
+            self._begin(conn)
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" at the first select')
             self._sleep(5)
@@ -93,21 +94,21 @@ class CheckUpdateWithoutSelectForUpdate(BaseCase):
             
             pd.update_product_total(conn, self.id, 50)
             self._logger.info(f'Product updated')
-
+            
+            # Cannot know the update because it was already deleted
+            # Can know the update if the record still exists
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after update')
             
-            conn.commit()
-            self._logger.info(f'Commited')
+            self._commit(conn)
             
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after commit')
 
     def _delete_product_after_sleep(self):
         with get_connection() as conn:
-            self._logger.info(f'Start sleep...')
             self._sleep(3)
-            self._logger.info(f'Wake up and delete product')
+            self._logger.info(f'Delete product')
             pd.delete_product(conn, self.id)
             self._logger.info(f'Product deleted')
             product = pd.select_product_by_id(conn, self.id)
@@ -127,7 +128,7 @@ class CheckSelectForUpdate(BaseCase):
 
     def _select_sleep_update(self):
         with get_connection() as conn:
-            conn.begin()
+            self._begin(conn)
             product = pd.select_product_for_update_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" at select for update')
             self._sleep(5)
@@ -141,17 +142,15 @@ class CheckSelectForUpdate(BaseCase):
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after update')
             
-            conn.commit()
-            self._logger.info(f'Commited')
+            self._commit(conn)
             
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after commit')
 
     def _delete_product_after_sleep(self):
         with get_connection() as conn:
-            self._logger.info(f'Start sleep...')
             self._sleep(3)
-            self._logger.info(f'Wake up and delete product')
+            self._logger.info(f'Delete product')
             pd.delete_product(conn, self.id)
             self._logger.info(f'Product deleted')
             product = pd.select_product_by_id(conn, self.id)
@@ -174,7 +173,7 @@ class CheckUpdateWithSelectForShare(BaseCase):
 
     def _select_sleep_update(self):
         with get_connection() as conn:
-            conn.begin()
+            self._begin(conn)
             # When using for share, another thread will get deadlock exception
             # https://stackoverflow.com/questions/32827650/mysql-innodb-difference-between-for-update-and-lock-in-share-mode
             product = pd.select_product_for_share_by_id(conn, self.id)
@@ -190,20 +189,18 @@ class CheckUpdateWithSelectForShare(BaseCase):
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after update')
             
-            conn.commit()
-            self._logger.info(f'Commited')
+            self._commit(conn)
             
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after commit')
 
     def _delete_product_after_sleep(self):
         with get_connection() as conn:
-            self._logger.info(f'Start sleep...')
             for i in range(3):
                 self._sleep(1)
                 product = pd.select_product_by_id(conn, self.id)
                 self._logger.info(f'Select Product and got "{product}"')
-            self._logger.info(f'Wake up and delete product')
+            self._logger.info(f'Delete product')
             pd.delete_product(conn, self.id)
             self._logger.info(f'Product deleted')
             product = pd.select_product_by_id(conn, self.id)
@@ -218,12 +215,15 @@ class CheckSelectForUpdateOtherRead(BaseCase):
         pd.create_product_table(conn)
         pd.insert_product(conn, self.id, self.name, self.total)
 
+    def _close(self, conn):
+        pd.delete_product(conn, self.id)
+
     def _get_routines(self):
         return [self._select_sleep_update, self._read_after_sleep]
 
     def _select_sleep_update(self):
         with get_connection() as conn:
-            conn.begin()
+            self._begin(conn)
             product = pd.select_product_for_update_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" at select for update')
             
@@ -238,17 +238,14 @@ class CheckSelectForUpdateOtherRead(BaseCase):
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after update')
             
-            conn.commit()
-            self._logger.info(f'Commited')
+            self._commit(conn)
             
             product = pd.select_product_by_id(conn, self.id)
             self._logger.info(f'Got product "{product}" after commit')
 
     def _read_after_sleep(self):
-        self._logger.info(f'Start sleep...')
-        self._sleep(2)
+        self._sleep(3)
         with get_connection() as conn:
-            self._logger.info(f'Begin after sleep')
             #conn.begin()
             for i in range(10):
                 self._sleep(1)

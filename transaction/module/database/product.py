@@ -11,7 +11,7 @@ def create_product_table(conn):
 
 def insert_product(conn, id: int, name: str, total: int):
     with conn.cursor() as cursor:
-        cursor.execute("""INSERT INTO product (id, name, total) VALUES (%s, %s, %s)""", (id, name, total))
+        cursor.execute("""INSERT IGNORE INTO product (id, name, total) VALUES (%s, %s, %s)""", (id, name, total))
         conn.commit()
 
 def select_product_by_id(conn, id: int):

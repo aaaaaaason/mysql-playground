@@ -3,13 +3,14 @@ import pymysql
 
 database = 'playground'
 
-def get_connection(database: str = database):
+def get_connection(database: str = database, autocommit: bool =True):
     conf = {
         'host': 'localhost',
         'user': 'root',
         'password': 'password',
         'cursorclass': pymysql.cursors.DictCursor,
-        'connect_timeout': 5
+        'connect_timeout': 5,
+        'autocommit': autocommit
     }
     if database:
         conf['database'] = database
